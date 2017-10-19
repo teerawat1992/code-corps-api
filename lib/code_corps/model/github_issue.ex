@@ -18,6 +18,7 @@ defmodule CodeCorps.GithubIssue do
     field :title, :string
     field :url, :string
 
+    belongs_to :github_pull_request, CodeCorps.GithubPullRequest
     belongs_to :github_repo, CodeCorps.GithubRepo
 
     timestamps()
