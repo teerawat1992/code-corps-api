@@ -10,10 +10,10 @@ defmodule CodeCorps.GitHub.Sync.PullRequest do
   alias Ecto.Multi
 
   @type outcome :: {:ok, list(Task.t)}
-                 | {:error, :repository_not_found}
-                 | {:error, :validation_error_on_inserting_user}
-                 | {:error, :multiple_github_users_matched_same_cc_user}
-                 | {:error, :validation_error_on_syncing_tasks}
+                 | {:error, :repo_not_found}
+                 | {:error, :validating_user}
+                 | {:error, :multiple_github_users_match}
+                 | {:error, :validating_tasks}
                  | {:error, :unexpected_transaction_outcome}
 
   @doc ~S"""
@@ -60,9 +60,9 @@ defmodule CodeCorps.GitHub.Sync.PullRequest do
   @spec marshall_result(tuple) :: tuple
   defp marshall_result({:ok, %{tasks: tasks}}), do: {:ok, tasks}
   defp marshall_result({:error, :repo, :unmatched_project, _steps}), do: {:ok, []}
-  defp marshall_result({:error, :repo, :unmatched_repository, _steps}), do: {:error, :repository_not_found}
-  defp marshall_result({:error, :user, %Ecto.Changeset{}, _steps}), do: {:error, :validation_error_on_inserting_user}
-  defp marshall_result({:error, :user, :multiple_users, _steps}), do: {:error, :multiple_github_users_matched_same_cc_user}
-  defp marshall_result({:error, :tasks, {_tasks, _errors}, _steps}), do: {:error, :validation_error_on_syncing_tasks}
+  defp marshall_result({:error, :repo, :unmatched_repository, _steps}), do: {:error, :repo_not_found}
+  defp marshall_result({:error, :user, %Ecto.Changeset{}, _steps}), do: {:error, :validating_user}
+  defp marshall_result({:error, :user, :multiple_users, _steps}), do: {:error, :multiple_github_users_match}
+  defp marshall_result({:error, :tasks, {_tasks, _errors}, _steps}), do: {:error, :validating_tasks}
   defp marshall_result({:error, _errored_step, _error_response, _steps}), do: {:error, :unexpected_transaction_outcome}
 end

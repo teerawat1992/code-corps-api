@@ -82,7 +82,7 @@ defmodule CodeCorps.GitHub.Sync.CommentTest do
     end
 
     test "with unmatched both users, returns error if unmatched repository" do
-      assert CommentSyncer.sync(@payload) == {:error, :repository_not_found}
+      assert CommentSyncer.sync(@payload) == {:error, :repo_not_found}
       refute Repo.one(User)
     end
 
@@ -163,7 +163,7 @@ defmodule CodeCorps.GitHub.Sync.CommentTest do
 
       _issue_user = insert(:user, github_id: issue_user_github_id)
 
-      assert CommentSyncer.sync(@payload) == {:error, :repository_not_found}
+      assert CommentSyncer.sync(@payload) == {:error, :repo_not_found}
     end
 
     test "with unmatched issue user, matched comment user, creates and updates tasks, comments and issue user, for each related project" do
@@ -232,7 +232,7 @@ defmodule CodeCorps.GitHub.Sync.CommentTest do
 
       _comment_user = insert(:user, github_id: comment_user_github_id)
 
-      assert CommentSyncer.sync(@payload) == {:error, :repository_not_found}
+      assert CommentSyncer.sync(@payload) == {:error, :repo_not_found}
     end
 
     test "with matched issue and comment user, creates and updates tasks, comments, for each related project" do
@@ -325,7 +325,7 @@ defmodule CodeCorps.GitHub.Sync.CommentTest do
       insert(:user, github_id: comment_user_github_id)
       insert(:user, github_id: issue_user_github_id)
 
-      assert CommentSyncer.sync(@payload) == {:error, :repository_not_found}
+      assert CommentSyncer.sync(@payload) == {:error, :repo_not_found}
     end
   end
 

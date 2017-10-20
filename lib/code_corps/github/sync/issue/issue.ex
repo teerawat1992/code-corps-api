@@ -15,10 +15,10 @@ defmodule CodeCorps.GitHub.Sync.Issue do
                  | {:error, :not_fully_implemented}
                  | {:error, :unexpected_action}
                  | {:error, :unexpected_payload}
-                 | {:error, :repository_not_found}
-                 | {:error, :validation_error_on_inserting_user}
-                 | {:error, :multiple_github_users_matched_same_cc_user}
-                 | {:error, :validation_error_on_syncing_tasks}
+                 | {:error, :repo_not_found}
+                 | {:error, :validating_user}
+                 | {:error, :multiple_github_users_match}
+                 | {:error, :validating_tasks}
                  | {:error, :unexpected_transaction_outcome}
 
   @doc ~S"""
@@ -38,34 +38,24 @@ defmodule CodeCorps.GitHub.Sync.Issue do
   If the sync fails, it will return an `:error` tuple, where the second element
   is the atom indicating a reason.
   """
-  @spec sync(map) :: outcome
-  def sync(payload) do
-    payload
-    |> operational_multi()
-    |> Repo.transaction
-    |> marshall_result()
+  @spec sync(map, map) :: outcome
+  def sync(%{fetch_issue: issue} = changes, payload) do
+    operational_multi(changes, issue)
+  end
+  def sync(changes, payload) do
+    operational_multi(changes, payload)
   end
 
-  @spec operational_multi(map) :: Multi.t
-  defp operational_multi(payload) do
+  @spec operational_multi(map, map) :: Multi.t
+  defp operational_multi(changes, payload) do
     Multi.new
-    |> Multi.run(:repo, fn _ -> RepoFinder.find_repo(payload) end)
-    |> Multi.run(:issue, fn %{repo: github_repo} -> link_issue(github_repo, payload) end)
-    |> Multi.run(:user, fn %{issue: github_issue} -> UserRecordLinker.link_to(github_issue, payload) end)
-    |> Multi.run(:tasks, fn %{issue: github_issue, user: user} -> github_issue |> IssueTaskSyncer.sync_all(user, payload) end)
+    |> Multi.run(:github_issue, fn _ -> link_issue(changes[:repo], payload) end)
+    |> Multi.run(:issue_user, fn %{github_issue: github_issue} -> UserRecordLinker.link_to(github_issue, payload) end)
+    |> Multi.run(:tasks, fn %{github_issue: github_issue, issue_user: user} -> github_issue |> IssueTaskSyncer.sync_all(user, payload) end)
   end
 
   @spec link_issue(GithubRepo.t, map) :: {:ok, GithubIssue.t} | {:error, Ecto.Changeset.t}
   defp link_issue(github_repo, %{"issue" => attrs}) do
     IssueGithubIssueSyncer.create_or_update_issue(github_repo, attrs)
   end
-
-  @spec marshall_result(tuple) :: tuple
-  defp marshall_result({:ok, %{tasks: tasks}}), do: {:ok, tasks}
-  defp marshall_result({:error, :repo, :unmatched_project, _steps}), do: {:ok, []}
-  defp marshall_result({:error, :repo, :unmatched_repository, _steps}), do: {:error, :repository_not_found}
-  defp marshall_result({:error, :user, %Ecto.Changeset{}, _steps}), do: {:error, :validation_error_on_inserting_user}
-  defp marshall_result({:error, :user, :multiple_users, _steps}), do: {:error, :multiple_github_users_matched_same_cc_user}
-  defp marshall_result({:error, :tasks, {_tasks, _errors}, _steps}), do: {:error, :validation_error_on_syncing_tasks}
-  defp marshall_result({:error, _errored_step, _error_response, _steps}), do: {:error, :unexpected_transaction_outcome}
 end

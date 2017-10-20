@@ -61,7 +61,7 @@ defmodule CodeCorps.GitHub.Sync.PullRequestTest do
     end
 
     test "with unmatched user, returns error if unmatched repository" do
-      assert PullRequest.sync(@payload) == {:error, :repository_not_found}
+      assert PullRequest.sync(@payload) == {:error, :repo_not_found}
       refute Repo.one(User)
     end
 
@@ -115,7 +115,7 @@ defmodule CodeCorps.GitHub.Sync.PullRequestTest do
       %{"pull_request" => %{"user" => %{"id" => user_github_id}}} = @payload
       insert(:user, github_id: user_github_id)
 
-      assert PullRequest.sync(@payload) == {:error, :repository_not_found}
+      assert PullRequest.sync(@payload) == {:error, :repo_not_found}
     end
   end
 end
