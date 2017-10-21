@@ -1,11 +1,8 @@
 defmodule CodeCorps.GitHub.Sync.PullRequest do
   alias CodeCorps.{
-    GitHub.Sync.Utils.RepoFinder,
-    Repo,
     Task
   }
   alias CodeCorps.GitHub.Sync.PullRequest.GithubPullRequest, as: GithubPullRequestSyncer
-  alias CodeCorps.GitHub.Sync.PullRequest.Task, as: PullRequestTaskSyncer
   alias CodeCorps.GitHub.Sync.User.RecordLinker, as: UserRecordLinker
   alias Ecto.Multi
 
