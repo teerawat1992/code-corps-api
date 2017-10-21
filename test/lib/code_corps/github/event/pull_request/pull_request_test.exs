@@ -14,6 +14,15 @@ defmodule CodeCorps.GitHub.Event.PullRequestTest do
     User
   }
 
+  defmodule SuccessAPI do
+    def request(:get, "https://api.github.com/repos/baxterthehacker/public-repo/issues/1", _, _, _) do
+      {:ok, load_endpoint_fixture("issue_2")}
+    end
+    def request(method, endpoint, headers, body, options) do
+      CodeCorps.GitHub.SuccessAPI.request(method, endpoint, headers, body, options)
+    end
+  end
+
   describe "handle/2" do
     @payload load_event_fixture("pull_request_opened") |> Map.put("action", "foo")
 
@@ -29,18 +38,20 @@ defmodule CodeCorps.GitHub.Event.PullRequestTest do
       @payload load_event_fixture("pull_request_#{action}")
 
       test "creates or updates associated records" do
-        %{"repository" => %{"id" => repo_github_id}} = @payload
+        with_mock_api(SuccessAPI) do
+          %{"repository" => %{"id" => repo_github_id}} = @payload
 
-        github_repo = insert(:github_repo, github_id: repo_github_id)
-        %{project: project} = insert(:project_github_repo, github_repo: github_repo)
-        insert(:task_list, project: project, inbox: true)
+          github_repo = insert(:github_repo, github_id: repo_github_id)
+          %{project: project} = insert(:project_github_repo, github_repo: github_repo)
+          insert(:task_list, project: project, inbox: true)
 
-        {:ok, tasks} = PullRequest.handle(@payload)
+          {:ok, tasks} = PullRequest.handle(@payload)
 
-        assert Enum.count(tasks) == 1
-        assert Repo.aggregate(GithubIssue, :count, :id) == 0 # FIXME
-        assert Repo.aggregate(GithubPullRequest, :count, :id) == 1
-        assert Repo.aggregate(Task, :count, :id) == 1
+          assert Enum.count(tasks) == 1
+          assert Repo.aggregate(GithubIssue, :count, :id) == 1
+          assert Repo.aggregate(GithubPullRequest, :count, :id) == 1
+          assert Repo.aggregate(Task, :count, :id) == 1
+        end
       end
 
       test "returns error if unmatched repository" do

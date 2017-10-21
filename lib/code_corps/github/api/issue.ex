@@ -5,6 +5,16 @@ defmodule CodeCorps.GitHub.API.Issue do
 
   alias CodeCorps.{GitHub, GithubAppInstallation, GithubIssue, GithubRepo, Task, User}
 
+  def from_url(url, %GithubRepo{github_app_installation: %GithubAppInstallation{} = installation}) do
+    "https://api.github.com/" <> endpoint = url
+
+    with opts when is_list(opts) <- opts_for(installation) do
+      GitHub.request(:get, endpoint, %{}, %{}, opts)
+    else
+      {:error, github_error} -> {:error, github_error}
+    end
+  end
+
   @spec create(Task.t) :: GitHub.response
   def create(%Task{
     github_repo: %GithubRepo{
@@ -49,13 +59,17 @@ defmodule CodeCorps.GitHub.API.Issue do
 
   @spec opts_for(User.t, GithubAppInstallation.t) :: list
   defp opts_for(%User{github_auth_token: nil}, %GithubAppInstallation{} = installation) do
+    opts_for(installation)
+  end
+  defp opts_for(%User{github_auth_token: token}, %GithubAppInstallation{}) do
+    [access_token: token]
+  end
+
+  defp opts_for(%GithubAppInstallation{} = installation) do
     with {:ok, token} <- installation |> GitHub.API.Installation.get_access_token do
       [access_token: token]
     else
       {:error, github_error} -> {:error, github_error}
     end
-  end
-  defp opts_for(%User{github_auth_token: token}, %GithubAppInstallation{}) do
-    [access_token: token]
   end
 end

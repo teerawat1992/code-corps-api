@@ -2,6 +2,7 @@ defmodule CodeCorps.GitHub.Sync do
 
   alias CodeCorps.{
     GitHub,
+    GithubRepo,
     GitHub.Sync.Utils.RepoFinder,
     Repo
   }
@@ -11,10 +12,10 @@ defmodule CodeCorps.GitHub.Sync do
                  | GitHub.Sync.Issue.outcome
                  | GitHub.Sync.PullRequest.outcome
 
-  def issue_event(%{"issue" => _} = payload) do
+  def issue_event(%{"issue" => issue} = payload) do
     Multi.new
     |> Multi.merge(__MODULE__, :find_repo, [payload])
-    |> Multi.merge(GitHub.Sync.Issue, :sync, [payload])
+    |> Multi.merge(GitHub.Sync.Issue, :sync, [issue])
     |> transact()
   end
 
@@ -23,21 +24,21 @@ defmodule CodeCorps.GitHub.Sync do
     |> Multi.merge(GitHub.Sync.Comment, :delete, [payload])
     |> transact()
   end
-  def issue_comment_event(%{"issue" => %{"pull_request" => %{"url" => pull_request_url}} = _, "comment" => _} = payload) do
+  def issue_comment_event(%{"issue" => %{"pull_request" => %{"url" => pull_request_url}} = issue, "comment" => _} = payload) do
     # Pull Request
     Multi.new
     |> Multi.merge(__MODULE__, :find_repo, [payload])
     |> Multi.merge(__MODULE__, :fetch_pull_request, [pull_request_url])
-    |> Multi.merge(GitHub.Sync.Issue, :sync, [payload])
+    |> Multi.merge(GitHub.Sync.Issue, :sync, [issue])
     |> Multi.merge(__MODULE__, :maybe_sync_pull_request, [payload])
     |> Multi.merge(GitHub.Sync.Comment, :sync, [payload])
     |> transact()
   end
-  def issue_comment_event(%{"issue" => _, "comment" => _} = payload) do
+  def issue_comment_event(%{"issue" => issue, "comment" => _} = payload) do
     # Issue
     Multi.new
     |> Multi.merge(__MODULE__, :find_repo, [payload])
-    |> Multi.merge(GitHub.Sync.Issue, :sync, [payload])
+    |> Multi.merge(GitHub.Sync.Issue, :sync, [issue])
     |> Multi.merge(GitHub.Sync.Comment, :sync, [payload])
     |> transact()
   end
@@ -61,10 +62,10 @@ defmodule CodeCorps.GitHub.Sync do
     |> Multi.merge(GitHub.Sync.Comment, :sync, [payload])
     |> transact()
   end
-  def issue_api(%{} = payload) do
+  def issue_api(%{} = issue) do
     # Issue
     Multi.new
-    |> Multi.merge(GitHub.Sync.Issue, :sync, [payload])
+    |> Multi.merge(GitHub.Sync.Issue, :sync, [issue])
     |> transact()
   end
 
@@ -93,9 +94,9 @@ defmodule CodeCorps.GitHub.Sync do
     |> Multi.run(:repo, fn _ -> RepoFinder.find_repo(payload) end)
   end
 
-  def fetch_issue(_, url) do
+  def fetch_issue(%{repo: %GithubRepo{} = github_repo}, url) do
     Multi.new
-    |> Multi.run(:fetch_issue, fn _ -> GitHub.API.Issue.from_url(url) end)
+    |> Multi.run(:fetch_issue, fn _ -> GitHub.API.Issue.from_url(url, github_repo) end)
   end
 
   def fetch_pull_request(_, url) do
@@ -108,9 +109,9 @@ defmodule CodeCorps.GitHub.Sync do
   end
   def maybe_fetch_pull_request(_, _), do: Multi.new
 
-  def maybe_sync_pull_request(_, %{} = payload) do
+  def maybe_sync_pull_request(changes, %{} = payload) do
     Multi.new
-    |> Multi.run(:sync_pull_request, fn _ -> GitHub.Sync.PullRequest.sync(payload) end)
+    |> Multi.run(:sync_pull_request, fn _ -> GitHub.Sync.PullRequest.sync(changes, payload) end)
   end
   def maybe_sync_pull_request(_, _), do: Multi.new
 

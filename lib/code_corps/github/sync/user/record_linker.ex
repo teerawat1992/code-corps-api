@@ -41,7 +41,7 @@ defmodule CodeCorps.GitHub.Sync.User.RecordLinker do
   """
   @spec link_to(GithubComment.t | GithubIssue.t | GithubPullRequest.t, map) :: linking_result
   def link_to(%GithubComment{} = comment, %{"comment" => %{"user" => user}}), do: do_link_to(comment, user)
-  def link_to(%GithubIssue{} = issue, %{"issue" => %{"user" => user}}), do: do_link_to(issue, user)
+  def link_to(%GithubIssue{} = issue, %{"user" => user}), do: do_link_to(issue, user)
   def link_to(%GithubPullRequest{} = pull_request, %{"pull_request" => %{"user" => user}}), do: do_link_to(pull_request, user)
 
   defp do_link_to(record, user_attrs) do
@@ -69,7 +69,8 @@ defmodule CodeCorps.GitHub.Sync.User.RecordLinker do
   defp match_users(%GithubPullRequest{id: github_pull_request_id}) do
     query = from u in User,
       distinct: u.id,
-      join: t in Task, on: u.id == t.user_id, where: t.github_pull_request_id == ^github_pull_request_id
+      join: t in Task, on: u.id == t.user_id,
+      join: gi in GithubIssue, on: gi.id == t.github_issue_id, where: gi.github_pull_request_id == ^github_pull_request_id
 
     query |> Repo.all
   end

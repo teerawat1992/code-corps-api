@@ -55,7 +55,7 @@ defmodule CodeCorps.GitHub.Sync.Issue do
   end
 
   @spec link_issue(GithubRepo.t, map) :: {:ok, GithubIssue.t} | {:error, Ecto.Changeset.t}
-  defp link_issue(github_repo, %{"issue" => attrs}) do
+  defp link_issue(github_repo, attrs) do
     IssueGithubIssueSyncer.create_or_update_issue(github_repo, attrs)
   end
 end
