@@ -1,16 +1,24 @@
 defmodule CodeCorps.GitHub.Sync do
 
   alias CodeCorps.{
+    Comment,
     GitHub,
     GithubRepo,
     GitHub.Sync.Utils.RepoFinder,
-    Repo
+    Repo,
+    Task
   }
   alias Ecto.Multi
 
-  @type outcome :: GitHub.Sync.Comment.outcome
-                 | GitHub.Sync.Issue.outcome
-                 | GitHub.Sync.PullRequest.outcome
+  @type outcome :: {:ok, list(Comment.t)}
+                 | {:ok, list(Task.t)}
+                 | {:error, :repo_not_found}
+                 | {:error, :validating_issue}
+                 | {:error, :validating_user}
+                 | {:error, :multiple_github_users_match}
+                 | {:error, :validating_tasks}
+                 | {:error, :validating_comments}
+                 | {:error, :unexpected_transaction_outcome}
 
   def issue_event(%{"issue" => issue} = payload) do
     Multi.new

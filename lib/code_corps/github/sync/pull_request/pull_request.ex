@@ -6,13 +6,6 @@ defmodule CodeCorps.GitHub.Sync.PullRequest do
   alias CodeCorps.GitHub.Sync.User.RecordLinker, as: UserRecordLinker
   alias Ecto.Multi
 
-  @type outcome :: {:ok, list(Task.t)}
-                 | {:error, :repo_not_found}
-                 | {:error, :validating_user}
-                 | {:error, :multiple_github_users_match}
-                 | {:error, :validating_tasks}
-                 | {:error, :unexpected_transaction_outcome}
-
   @doc ~S"""
   Syncs a GitHub pull request API payload with our data.
 
@@ -31,7 +24,7 @@ defmodule CodeCorps.GitHub.Sync.PullRequest do
   If the sync fails, it will return an `:error` tuple, where the second element
   is the atom indicating a reason.
   """
-  @spec sync(map, map) :: outcome
+  @spec sync(map, map) :: Multi.t
   def sync(changes, payload) do
     operational_multi(changes, payload)
   end
