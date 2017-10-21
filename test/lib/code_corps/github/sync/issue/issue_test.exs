@@ -21,7 +21,7 @@ defmodule CodeCorps.GitHub.Sync.IssueTest do
         "issue" => %{
           "body" => markdown, "title" => title, "number" => number,
           "user" => %{"id" => user_github_id}
-        },
+        } = issue,
         "repository" => %{"id" => repo_github_id}
       } = @payload
 
@@ -39,7 +39,9 @@ defmodule CodeCorps.GitHub.Sync.IssueTest do
         insert(:task_list, project: project, inbox: true)
       end)
 
-      {:ok, tasks} = Issue.sync(@payload)
+      changes = %{repo: github_repo}
+
+      {:ok, %{tasks: tasks}} = Issue.sync(changes, issue) |> Repo.transaction
 
       assert Enum.count(tasks) == 3
       assert Repo.aggregate(Task, :count, :id) == 3
@@ -61,14 +63,9 @@ defmodule CodeCorps.GitHub.Sync.IssueTest do
       end)
     end
 
-    test "with unmatched user, returns error if unmatched repository" do
-      assert Issue.sync(@payload) == {:error, :repo_not_found}
-      refute Repo.one(User)
-    end
-
     test "with matched user, creates or updates task for each project associated to github repo" do
       %{
-        "issue" => %{"id" => issue_github_id, "body" => markdown, "title" => title, "number" => number, "user" => %{"id" => user_github_id}},
+        "issue" => %{"id" => issue_github_id, "body" => markdown, "title" => title, "number" => number, "user" => %{"id" => user_github_id}} = issue,
         "repository" => %{"id" => repo_github_id}
       } = @payload
 
@@ -92,7 +89,9 @@ defmodule CodeCorps.GitHub.Sync.IssueTest do
       %{id: existing_task_id} =
         insert(:task, project: project, user: user, github_repo: github_repo, github_issue: github_issue)
 
-      {:ok, tasks} = Issue.sync(@payload)
+      changes = %{repo: github_repo}
+
+      {:ok, %{tasks: tasks}} = Issue.sync(changes, issue) |> Repo.transaction
 
       assert Enum.count(tasks) == 3
       assert Repo.aggregate(Task, :count, :id) == 3
@@ -110,13 +109,6 @@ defmodule CodeCorps.GitHub.Sync.IssueTest do
       end)
 
       assert existing_task_id in (tasks |> Enum.map(&Map.get(&1, :id)))
-    end
-
-    test "with matched user, returns error if unmatched repository" do
-      %{"issue" => %{"user" => %{"id" => user_github_id}}} = @payload
-      insert(:user, github_id: user_github_id)
-
-      assert Issue.sync(@payload) == {:error, :repo_not_found}
     end
   end
 end
